@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Crypto Market Data</title>
+<style>
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 20px;
+    }
+    th, td {
+        padding: 10px;
+        text-align: left;
+        border-bottom: 1px solid #ddd;
+    }
+    th {
+        background-color: #f2f2f2;
+    }
+    input[type="text"] {
+        padding: 8px;
+        font-size: 16px;
+    }
+    button {
+        padding: 10px 20px;
+        font-size: 16px;
+        cursor: pointer;
+    }
+
+    button:hover{
+        cursor: pointer;
+        background-color: azure;
+    }
+</style>
+</head>
+<body>
+    <h1>Crypto Market Data</h1>
+    <input type="text" id="searchInput" placeholder="Search by name or symbol">
+    <button onclick="handleSearch()">Search</button>
+    <button onclick="handleSort('market_cap')">Sort by Market Cap</button>
+    <button onclick="handleSort('price_change_percentage')">Sort by % Change</button>
+    <table id="cryptoTable">
+        <thead>
+            <tr>
+                <th>Logo</th>
+                <th>Name</th>
+                <th>Symbol</th>
+                <th>Current Price</th>
+                <th>Total Volume</th>
+                <th>Market Cap</th>
+                <th>% Change (24h)</th>
+            </tr>
+        </thead>
+        <tbody id="cryptoTableBody">
+        </tbody>
+    </table>
+
+    <script>
+        const apiUrl = 'https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=10&page=1&sparkline=false';
+
+        // Fetch data using async/await
+        async function fetchDataAsync() {
+            try {
+                const response = await fetch(apiUrl);
+                const data = await response.json();
+                return data;
+            } catch (error) {
+                console.error('Error fetching data:', error);
+                return [];
+            }
+        }
+
+        // Fetch data using .then
+        function fetchDataUsingThen() {
+            return fetch(apiUrl)
+                .then(response => response.json())
+                .catch(error => {
+                    console.error('Error fetching data:', error);
+                    return [];
+                });
+        }
+
+        // Render data in the table
+        async function renderTable() {
+            const data = await fetchDataAsync(); // or fetchDataUsingThen()
+
+            const tableBody = document.getElementById('cryptoTableBody');
+            tableBody.innerHTML = '';
+
+            data.forEach(crypto => {
+                const { name, symbol, current_price, total_volume, market_cap, price_change_percentage_24h, image } = crypto;
+
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td><img src="${image}" alt="${name}" style="width: 30px;"></td>
+                    <td>${name}</td>
+                    <td>${symbol.toUpperCase()}</td>
+                    <td>${current_price.toFixed(2)}</td>
+                    <td>${total_volume.toLocaleString()}</td>
+                    <td>${market_cap.toLocaleString()}</td>
+                    <td>${price_change_percentage_24h.toFixed(2)}%</td>
+                `;
+                tableBody.appendChild(row);
+            });
+        }
+
+        // Handle search functionality
+        function handleSearch() {
+            const searchInput = document.getElementById('searchInput').value.toLowerCase();
+            const rows = document.getElementById('cryptoTableBody').getElementsByTagName('tr');
+
+            Array.from(rows).forEach(row => {
+                const name = row.getElementsByTagName('td')[1].innerText.toLowerCase();
+                const symbol = row.getElementsByTagName('td')[2].innerText.toLowerCase();
+                if (name.includes(searchInput) || symbol.includes(searchInput)) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+        }
+
+        // Handle sorting functionality
+        function handleSort(sortBy) {
+            const tableBody = document.getElementById('cryptoTableBody');
+            const rows = Array.from(tableBody.getElementsByTagName('tr'));
+
+            if (sortBy === 'market_cap') {
+                rows.sort((rowA, rowB) => {
+                    const valueA = parseFloat(rowA.getElementsByTagName('td')[5].innerText.replace(/,/g, ''));
+                    const valueB = parseFloat(rowB.getElementsByTagName('td')[5].innerText.replace(/,/g, ''));
+                    return valueB - valueA;
+                });
+            } else if (sortBy === 'price_change_percentage') {
+                rows.sort((rowA, rowB) => {
+                    const valueA = parseFloat(rowA.getElementsByTagName('td')[6].innerText.replace(/%/g, ''));
+                    const valueB = parseFloat(rowB.getElementsByTagName('td')[6].innerText.replace(/%/g, ''));
+                    return valueB - valueA;
+                });
+            }
+
+            // Clear and re-append sorted rows
+            tableBody.innerHTML = '';
+            rows.forEach(row => {
+                tableBody.appendChild(row);
+            });
+        }
+
+        // Initial render on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            renderTable();
+        });
+    </script>
+</body>
+</html>
